@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}All Bookings{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    }
+
+    .page-title {
+        font-weight: 800;
+        background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .badge-status {
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .status-pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: #b45309;
+    }
+
+    .status-approved {
+        background: rgba(16, 185, 129, 0.15);
+        color: #065f46;
+    }
+
+    .status-rejected {
+        background: rgba(239, 68, 68, 0.15);
+        color: #991b1b;
+    }
+
+    table th {
+        font-weight: 700;
+        font-size: .9rem;
+    }
+
+    table td {
+        font-size: .9rem;
+    }
+</style>
+
+<div class="container py-4">
+
+    <div class="page-header">
+        <h2 class="page-title">
+            <i class="fas fa-envelope-open-text me-2"></i> Booking Requests
+        </h2>
+        <p style="opacity:0.6;">All property booking requests from users</p>
+    </div>
+
+    {% if bookings %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Property</th>
+                    <th>Tenant</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for b in bookings %}
+                <tr>
+                    <td>#{{ b.id }}</td>
+
+                    <td>{{ b.property_title }}</td>
+
+                    <td>
+                        <i class="fa fa-user text-primary me-1"></i>
+                        {{ b.tenant_name }}
+                    </td>
+
+                    <td>
+                        {% if b.status == "Pending" %}
+                        <span class="badge-status status-pending">
+                            <i class="fas fa-clock me-1"></i> Pending
+                        </span>
+                        {% elif b.status == "Approved" %}
+                        <span class="badge-status status-approved">
+                            <i class="fas fa-check-circle me-1"></i> Approved
+                        </span>
+                        {% else %}
+                        <span class="badge-status status-rejected">
+                            <i class="fas fa-times-circle me-1"></i> Rejected
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ b.created_at.split("T")[0] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+        <i class="far fa-folder-open fa-4x mb-3" style="opacity:0.3;"></i>
+        <h4>No Booking Requests Found</h4>
+        <p style="opacity:0.6;">No users have placed bookings yet.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

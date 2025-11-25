@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Reset Password{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* --- LAYOUT & CARD --- */
+    .auth-wrapper {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .auth-card {
+        background-color: var(--card-bg) !important;
+        width: 100%;
+        max-width: 450px;
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    /* Top Decoration Line */
+    .auth-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* --- ICONS & HEADERS --- */
+    .icon-circle {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin: 0 auto 20px auto;
+        transition: all 0.3s ease;
+    }
+
+    /* Stage 1: Purple */
+    .theme-purple .icon-circle {
+        background: rgba(118, 75, 162, 0.1);
+        color: #764ba2;
+    }
+
+    .theme-purple h3 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .btn-purple {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    /* Stage 2: Green */
+    .theme-green .icon-circle {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .theme-green h3 {
+        color: var(--text-color);
+    }
+
+    .btn-green {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    /* Stage 3: Blue */
+    .theme-blue .icon-circle {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .theme-blue h3 {
+        color: var(--text-color);
+    }
+
+    .btn-blue {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+
+    /* Headers */
+    .auth-header h3 {
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+
+    .auth-header p {
+        color: var(--text-color);
+        opacity: 0.6;
+        font-size: 0.9rem;
+    }
+
+    /* --- INPUT FIXES (Dark Mode) --- */
+    .form-control,
+    .input-group-text {
+        background-color: var(--bg-color) !important;
+        color: var(--text-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.3) !important;
+    }
+
+    .form-control::placeholder {
+        color: var(--text-color) !important;
+        opacity: 0.5;
+    }
+
+    .input-group-text {
+        border-right: none !important;
+        border-radius: 12px 0 0 12px;
+        padding: 12px 15px;
+    }
+
+    .form-control {
+        border-left: none !important;
+        border-radius: 0 12px 12px 0;
+        padding: 12px 15px;
+    }
+
+    .form-control:focus {
+        border-color: #764ba2 !important;
+        box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2) !important;
+    }
+
+    .form-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-color);
+        opacity: 0.7;
+        margin-bottom: 5px;
+    }
+
+    /* --- BUTTONS --- */
+    .btn-action {
+        border: none;
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .btn-resend {
+        background: transparent;
+        border: 2px solid rgba(128, 128, 128, 0.2);
+        color: var(--text-color);
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: all 0.3s;
+    }
+
+    .btn-resend:hover {
+        border-color: #10b981;
+        color: #10b981;
+    }
+
+    /* Back Link */
+    .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 20px;
+        color: var(--text-color);
+        opacity: 0.6;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        opacity: 1;
+        color: #764ba2;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+
+        {% if stage == "email" %}
+        <div class="theme-purple">
+            <div class="icon-circle">
+                <i class="fas fa-unlock-alt"></i>
+            </div>
+            <div class="auth-header text-center mb-4">
+                <h3>Forgot Password?</h3>
+                <p>No worries, we'll send you recovery instructions.</p>
+            </div>
+
+            <form method="POST">
+                <div class="mb-4">
+                    <label class="form-label">Email Address</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope" style="color: #764ba2;"></i></span>
+                        <input type="email" name="email" class="form-control" required placeholder="Enter your email">
+                    </div>
+                </div>
+                <button class="btn-action btn-purple">
+                    Send OTP <i class="fas fa-paper-plane ms-2"></i>
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+
+        {% if stage == "otp" %}
+        <div class="theme-green">
+            <div class="icon-circle">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="auth-header text-center mb-4">
+                <h3>Verify Identity</h3>
+                <p>Enter the code sent to <strong>{{ email }}</strong></p>
+            </div>
+
+            <form method="POST">
+                <div class="mb-4">
+                    <label class="form-label text-center d-block">One Time Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-key" style="color: #10b981;"></i></span>
+                        <input type="text" name="otp" class="form-control" required placeholder="X X X X X X"
+                            style="letter-spacing: 4px; text-align: center; font-weight: 700;">
+                    </div>
+                </div>
+
+                <button class="btn-action btn-green">
+                    Verify Code <i class="fas fa-check-circle ms-2"></i>
+                </button>
+
+                <button name="resend" value="1" class="btn-resend">
+                    <i class="fas fa-redo-alt me-2"></i> Resend OTP
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+
+        {% if stage == "reset_pass" %}
+        <div class="theme-blue">
+            <div class="icon-circle">
+                <i class="fas fa-lock"></i>
+            </div>
+            <div class="auth-header text-center mb-4">
+                <h3>Reset Password</h3>
+                <p>Create a strong new password for your account.</p>
+            </div>
+
+            <form method="POST">
+                <div class="mb-4">
+                    <label class="form-label">New Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock" style="color: #3b82f6;"></i></span>
+                        <input type="password" name="password" class="form-control" required
+                            placeholder="Enter new password">
+                    </div>
+                </div>
+
+                <button class="btn-action btn-blue">
+                    Update Password <i class="fas fa-check ms-2"></i>
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <a href="{{ url_for('login') }}" class="back-link">
+            <i class="fas fa-arrow-left me-1"></i> Back to Login
+        </a>
+
+    </div>
+</div>
+
+{% endblock %}

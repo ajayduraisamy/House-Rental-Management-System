@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Manage Complaints{% endblock %}
+
+{% block content %}
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+    }
+
+    .header-title h2 {
+        font-weight: 800;
+        margin: 0;
+        
+        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* --- GRID SYSTEM --- */
+    .complaints-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 25px;
+    }
+
+    /* --- CARD DESIGN --- */
+    .complaint-card {
+        background-color: var(--card-bg);
+        border-radius: 16px;
+        padding: 25px;
+        position: relative;
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex;
+        flex-direction: column;
+        animation: fadeInUp 0.5s ease-out backwards;
+    }
+
+    .complaint-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Status Indicators (Left Border) */
+    .complaint-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        border-radius: 16px 0 0 16px;
+    }
+
+    /* Dynamic Border Colors */
+    .status-pending::before {
+        background: #f59e0b;
+    }
+
+    /* Orange */
+    .status-progress::before {
+        background: #3b82f6;
+    }
+
+    /* Blue */
+    .status-resolved::before {
+        background: #10b981;
+    }
+
+    /* Green */
+
+    /* --- CARD CONTENT --- */
+
+    /* Top: Property & Tenant */
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+
+    .context-info h6 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .context-info small {
+        opacity: 0.6;
+        font-size: 0.8rem;
+        color: var(--text-color);
+        margin-left: 2px;
+    }
+
+    .id-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        opacity: 0.4;
+        color: var(--text-color);
+    }
+
+    /* Middle: Issue Details */
+    .card-mid {
+        flex-grow: 1;
+        margin-bottom: 20px;
+    }
+
+    .issue-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+
+    .issue-desc {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.8;
+        line-height: 1.5;
+        background: var(--bg-color);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(128, 128, 128, 0.1);
+    }
+
+    /* Bottom: Status Badge & Actions */
+    .card-bottom {
+        border-top: 1px solid rgba(128, 128, 128, 0.1);
+        padding-top: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    /* Status Pills */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 5px 12px;
+        border-radius: 20px;
+        width: fit-content;
+    }
+
+    .badge-pending {
+        color: #f59e0b;
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .badge-progress {
+        color: #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .badge-resolved {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    /* Action Buttons Group */
+    .action-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .btn-action {
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .btn-progress {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .btn-progress:hover {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-resolve {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .btn-resolve:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: rgba(128, 128, 128, 0.1);
+        color: var(--text-color);
+        grid-column: 1 / -1;
+        /* Full width */
+    }
+
+    /* Back Button */
+    .btn-back {
+        color: var(--text-color);
+        opacity: 0.6;
+        text-decoration: none;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+
+    .btn-back:hover {
+        opacity: 1;
+        color: #ff416c;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--text-color);
+        opacity: 0.2;
+        margin-bottom: 20px;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="container py-4">
+
+    <div class="page-header">
+        <div class="header-title">
+            <h2>Tenant Issues</h2>
+            <p style="margin:0; opacity: 0.6; color: var(--text-color);">Track and resolve property complaints</p>
+        </div>
+        <a href="{{ url_for('owner_dashboard') }}" class="btn-back">
+            <i class="fas fa-arrow-left me-2"></i> Dashboard
+        </a>
+    </div>
+
+    {% if complaints|length == 0 %}
+    <div class="empty-state">
+        <i class="fas fa-clipboard-check empty-icon"></i>
+        <h3 style="color: var(--text-color);">No Complaints!</h3>
+        <p style="color: var(--text-color); opacity: 0.6;">Your properties are running smoothly.</p>
+    </div>
+    {% else %}
+
+    <div class="complaints-grid">
+        {% for c in complaints %}
+
+        {% set status_class = 'status-pending' %}
+        {% set badge_class = 'badge-pending' %}
+
+        {% if c.status == 'In Progress' %}
+        {% set status_class = 'status-progress' %}
+        {% set badge_class = 'badge-progress' %}
+        {% elif c.status == 'Resolved' %}
+        {% set status_class = 'status-resolved' %}
+        {% set badge_class = 'badge-resolved' %}
+        {% endif %}
+
+        <div class="complaint-card {{ status_class }}" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+
+            <div class="card-top">
+                <div class="context-info">
+                    <h6><i class="fas fa-home"></i> {{ c.property_title }}</h6>
+                    <small>Tenant: {{ c.tenant_name }}</small>
+                </div>
+                <span class="id-badge">#{{ c.id }}</span>
+            </div>
+
+            <div class="card-mid">
+                <div class="issue-title">{{ c.title }}</div>
+                <div class="issue-desc">
+                    {{ c.details }}
+                </div>
+            </div>
+
+            <div class="card-bottom">
+
+                <div>
+                    {% if c.status == 'Pending' %}
+                    <span class="status-badge {{ badge_class }}">
+                        <i class="fas fa-exclamation-circle"></i> Needs Action
+                    </span>
+                    {% elif c.status == 'In Progress' %}
+                    <span class="status-badge {{ badge_class }}">
+                        <i class="fas fa-tools"></i> Working on it
+                    </span>
+                    {% else %}
+                    <span class="status-badge {{ badge_class }}">
+                        <i class="fas fa-check-circle"></i> Resolved
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if c.status != 'Resolved' %}
+                <div class="action-group">
+
+                    {% if c.status == 'Pending' %}
+                    <form action="{{ url_for('update_complaint', cid=c.id) }}" method="POST" style="width: 100%;">
+                        <input type="hidden" name="status" value="In Progress">
+                        <button class="btn-action btn-progress" style="width: 100%;">
+                            <i class="fas fa-spinner"></i> Process
+                        </button>
+                    </form>
+                    {% else %}
+                    <div style="width: 100%;"></div>
+                    {% endif %}
+
+                    <form action="{{ url_for('update_complaint', cid=c.id) }}" method="POST" style="width: 100%;">
+                        <input type="hidden" name="status" value="Resolved">
+                        <button class="btn-action btn-resolve" style="width: 100%;">
+                            <i class="fas fa-check"></i> Resolve
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <button class="btn-action btn-disabled">
+                    Issue Closed
+                </button>
+                {% endif %}
+
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

@@ -14,9 +14,6 @@ app.secret_key = "supersecretkey"
 
 load_dotenv()
 
-# -----------------------
-#SEND EMAIL CONFIG WITH ENVIRONMENT VARIABLES
-# -----------------------
 
 
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
@@ -25,6 +22,7 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
 def send_otp_email(receiver_email, otp):
     try:
+        
         msg = MIMEMultipart()
         msg["From"] = SENDER_EMAIL
         msg["To"] = receiver_email
@@ -86,25 +84,22 @@ def send_otp_email(receiver_email, otp):
 </html>
 """
 
-        #msg.attach(MIMEText(body, "plain"))
         msg.attach(MIMEText(body, "html"))
 
-
-        
+        #print("SMTP Connecting...")
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.ehlo()
         server.starttls()
         server.ehlo()
 
-        
-
+        #print("SMTP Logging in...")
         server.login(SENDER_EMAIL, EMAIL_PASSWORD)
 
-
+        #print("SMTP Sending email...")
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
         server.quit()
 
-        print("Email sent successfully")
+        print("EMAIL SENT SUCCESSFULLY")
 
     except smtplib.SMTPAuthenticationError as e:
         print("AUTH ERROR:", e.smtp_error.decode())
@@ -114,10 +109,6 @@ def send_otp_email(receiver_email, otp):
     except Exception as e:
         print("GENERAL ERROR:", e)
         raise
-
-
-
-# -----------------------
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -149,17 +140,13 @@ def home():
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
-    # ---------------------------------------------
-    # STEP 1 — FIRST TIME USER OPENS REGISTER PAGE
-    # ---------------------------------------------
     if request.method == "GET":
+        print("GET /register → Resetting Session")
+        session.pop("otp_stage", None)
+        session.pop("temp_user", None)
         return render_template("register.html", stage="register")
 
 
-
-    # ---------------------------------------------
-    # STEP 2 — USER SUBMITS REGISTER FORM (NAME, EMAIL, etc.)
-    # ---------------------------------------------
     if "otp_stage" not in session:
 
         name = request.form.get("name")
@@ -168,10 +155,22 @@ def register():
         number = request.form.get("number")
         role = request.form.get("role")
 
-        # Generate OTP
-        otp = str(random.randint(100000, 999999))
+        print("STEP 2: Received REGISTER form:")
+        print("Name:", name, "Email:", email)
 
-        # Store temporary user data in session
+    
+        conn = get_db()
+        existing = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if existing:
+            print("Email already exists:", email)
+            flash("Email already registered.")
+            return render_template("register.html", stage="register")
+
+    
+        otp = str(random.randint(100000, 999999))
+        print("STEP 2: OTP GENERATED :", otp)
+
+    
         session["temp_user"] = {
             "name": name,
             "email": email,
@@ -181,77 +180,57 @@ def register():
             "otp": otp
         }
 
-        # Send OTP email
+        
         send_otp_email(email, otp)
 
-        # Enable OTP stage
+    
         session["otp_stage"] = True
 
-        flash("OTP sent to your email! Enter the OTP below.")
+        flash("OTP sent to your email!")
         return render_template("register.html", stage="verify", email=email)
 
-
-
-    # ---------------------------------------------
-    # STEP 3 — OTP STAGE (VERIFY OR RESEND)
-    # ---------------------------------------------
     if session.get("otp_stage"):
 
-        # ------------------------
-        # USER CLICKED RESEND OTP
-        # ------------------------
+    
         if request.form.get("resend"):
             new_otp = str(random.randint(100000, 999999))
             session["temp_user"]["otp"] = new_otp
+            print("STEP 3: RESEND OTP:", new_otp)
 
             send_otp_email(session["temp_user"]["email"], new_otp)
 
-            flash("A new OTP has been sent to your email!")
-            return render_template(
-                "register.html",
-                stage="verify",
-                email=session["temp_user"]["email"]
-            )
+            flash("New OTP sent!")
+            return render_template("register.html", stage="verify", email=session["temp_user"]["email"])
 
-        # ------------------------
-        # NORMAL OTP VERIFICATION
-        # ------------------------
+    
         entered_otp = request.form.get("otp")
         real_otp = session["temp_user"]["otp"]
 
-        if entered_otp == real_otp:
+        print("STEP 3: ENTERED:", entered_otp, "REAL:", real_otp)
 
+        if entered_otp == real_otp:
             user = session["temp_user"]
 
             conn = get_db()
             conn.execute("""
                 INSERT INTO users(name, email, password, number, role, otp, is_verified)
                 VALUES (?,?,?,?,?,?,1)
-            """, (
-                user["name"],
-                user["email"],
-                user["password"],
-                user["number"],
-                user["role"],
-                real_otp
-            ))
+            """, (user["name"], user["email"], user["password"], user["number"], user["role"], real_otp))
             conn.commit()
             conn.close()
 
-            # Clear session temp data
             session.pop("temp_user")
             session.pop("otp_stage")
 
-            flash("Registration completed! You can now log in.")
+            print("STEP 3: OTP VERIFIED → USER REGISTERED")
+            flash("Registration successful!")
             return redirect(url_for("login"))
 
         else:
-            flash("Invalid OTP! Try again.")
-            return render_template(
-                "register.html",
-                stage="verify",
-                email=session["temp_user"]["email"]
-            )
+            print("STEP 3: WRONG OTP")
+            flash("Invalid OTP!")
+            return render_template("register.html", stage="verify", email=session["temp_user"]["email"])
+
 
 # -----------------------
 # Login
@@ -266,10 +245,17 @@ def login():
         user = conn.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password)).fetchone()
         conn.close()
 
+        
         if not user:
-            flash("Invalid credentials")
+            flash("Invalid email or password.")
             return redirect(url_for("login"))
 
+    
+        if user["is_verified"] == 0:
+            flash("Your email is not verified yet. Please complete OTP verification.")
+            return redirect(url_for("register"))
+
+        
         session["user_id"] = user["id"]
         session["role"] = user["role"]
         session["name"] = user["name"]
@@ -280,79 +266,147 @@ def login():
             return redirect(url_for("owner_dashboard"))
         else:
             return redirect(url_for("user_dashboard"))
+
     return render_template("login.html")
 
 
 # -----------------------
-# Logout
+# forgot password
 # -----------------------
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
+@app.route("/forgot", methods=["GET", "POST"])
+def forgot():
+
+    
+    if request.method == "GET":
+        session.pop("reset_stage", None)
+        session.pop("reset_data", None)
+        return render_template("forgot.html", stage="email")
 
 
-# -----------------------
-# Admin Dashboard
-# -----------------------
-@app.route("/admin/dashboard")
-def admin_dashboard():
-    if session.get("role") != "admin":
+
+    if "reset_stage" not in session:
+
+        email = request.form.get("email")
+
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        conn.close()
+
+        if not user:
+            flash("Email not found!")
+            return render_template("forgot.html", stage="email")
+
+        
+        otp = str(random.randint(100000, 999999))
+
+        
+        session["reset_data"] = {
+            "email": email,
+            "otp": otp
+        }
+
+        send_otp_email(email, otp)
+
+        session["reset_stage"] = "otp"
+
+        flash("OTP has been sent to your email!")
+        return render_template("forgot.html", stage="otp", email=email)
+
+
+    
+    if session["reset_stage"] == "otp":
+
+    
+        if request.form.get("resend"):
+            new_otp = str(random.randint(100000, 999999))
+            session["reset_data"]["otp"] = new_otp
+            send_otp_email(session["reset_data"]["email"], new_otp)
+
+            flash("New OTP sent!")
+            return render_template("forgot.html", stage="otp", email=session["reset_data"]["email"])
+
+        
+        entered_otp = request.form.get("otp")
+        real_otp = session["reset_data"]["otp"]
+
+        if entered_otp != real_otp:
+            flash("Invalid OTP!")
+            return render_template("forgot.html", stage="otp", email=session["reset_data"]["email"])
+
+        
+        session["reset_stage"] = "reset_pass"
+        flash("OTP Verified! Enter your new password.")
+        return render_template("forgot.html", stage="reset_pass")
+
+
+
+    if session["reset_stage"] == "reset_pass":
+
+        new_pass = request.form.get("password")
+        email = session["reset_data"]["email"]
+
+        conn = get_db()
+        conn.execute("UPDATE users SET password=? WHERE email=?", (new_pass, email))
+        conn.commit()
+        conn.close()
+
+        session.pop("reset_data")
+        session.pop("reset_stage")
+
+        flash("Password updated successfully! Login now.")
         return redirect(url_for("login"))
 
-    conn = get_db()
-    users = conn.execute("SELECT * FROM users").fetchall()
-    properties = conn.execute("SELECT p.*, u.name as owner_name FROM properties p LEFT JOIN users u ON p.owner_id=u.id").fetchall()
-    rents = conn.execute(
-        "SELECT r.*, p.title as property_title, u_t.name as tenant_name, u_o.name as owner_name "
-        "FROM rent_payments r "
-        "LEFT JOIN properties p ON r.property_id=p.id "
-        "LEFT JOIN users u_t ON r.tenant_id=u_t.id "
-        "LEFT JOIN users u_o ON p.owner_id=u_o.id"
-    ).fetchall()
-    complaints = conn.execute(
-        "SELECT c.*, p.title as property_title, u_t.name as tenant_name, u_o.name as owner_name "
-        "FROM complaints c "
-        "LEFT JOIN properties p ON c.property_id=p.id "
-        "LEFT JOIN users u_t ON c.tenant_id=u_t.id "
-        "LEFT JOIN users u_o ON p.owner_id=u_o.id"
-    ).fetchall()
-    conn.close()
-
-    return render_template("admin_dashboard.html", users=users, properties=properties, rents=rents, complaints=complaints)
 
 
-# -----------------------
-# Owner Dashboard
-# -----------------------
+
+# -----------------------------------------
+# OWNER DASHBOARD
+# -----------------------------------------
 @app.route("/owner/dashboard")
 def owner_dashboard():
     if session.get("role") != "owner":
         return redirect(url_for("login"))
 
     conn = get_db()
-    properties = conn.execute("SELECT * FROM properties WHERE owner_id=?", (session["user_id"],)).fetchall()
-    rents = conn.execute(
-        "SELECT r.*, p.title as property_title, u.name as tenant_name "
-        "FROM rent_payments r "
-        "LEFT JOIN properties p ON r.property_id=p.id "
-        "LEFT JOIN users u ON r.tenant_id=u.id "
-        "WHERE p.owner_id=?",
+
+    
+    properties = conn.execute(
+        "SELECT * FROM properties WHERE owner_id=?",
         (session["user_id"],)
     ).fetchall()
-    complaints = conn.execute(
-        "SELECT c.*, p.title as property_title, u.name as tenant_name "
-        "FROM complaints c LEFT JOIN properties p ON c.property_id=p.id LEFT JOIN users u ON c.tenant_id=u.id "
-        "WHERE p.owner_id=?",
-        (session["user_id"],)
-    ).fetchall()
+
+    
+    rents = conn.execute("""
+        SELECT r.*, p.title AS property_title, u.name AS tenant_name
+        FROM rent_payments r
+        JOIN properties p ON r.property_id = p.id
+        JOIN users u ON r.tenant_id = u.id
+        WHERE p.owner_id = ?
+        ORDER BY r.year DESC, r.month DESC
+    """, (session["user_id"],)).fetchall()
+
+    
+    complaints = conn.execute("""
+        SELECT c.*, p.title AS property_title, u.name AS tenant_name
+        FROM complaints c
+        JOIN properties p ON c.property_id = p.id
+        JOIN users u ON c.tenant_id = u.id
+        WHERE p.owner_id = ?
+        ORDER BY c.id DESC
+    """, (session["user_id"],)).fetchall()
+
     conn.close()
 
-    return render_template("owner_dashboard.html", properties=properties, rents=rents, complaints=complaints)
+    return render_template(
+        "owner_dashboard.html",
+        properties=properties,
+        rents=rents,
+        complaints=complaints
+    )
 
 
 # -----------------------
-# Add Property (Owner) - CREATE
+# Onwer create property
 # -----------------------
 @app.route("/owner/add-property", methods=["GET", "POST"])
 def add_property():
@@ -368,38 +422,44 @@ def add_property():
 
         file = request.files.get("image")
         image_path = ""
+
         if file and file.filename:
-            filename = f"{int(datetime.now().timestamp())}_{file.filename}"
-            image_path = os.path.join("static", "uploads", filename)
-            file.save(os.path.join(BASE_DIR, image_path))
+           filename = f"{int(datetime.now().timestamp())}_{file.filename}"
+           file.save(os.path.join(UPLOAD_FOLDER, filename))
+           image_path = filename  
+
 
         conn = get_db()
-        conn.execute(
-            "INSERT INTO properties (title, price, location, size, description, image, owner_id) VALUES (?,?,?,?,?,?,?)",
-            (title, price, location, size, description, image_path, session["user_id"])
-        )
+        conn.execute("""
+            INSERT INTO properties(title, price, location, size, description, image, owner_id)
+            VALUES (?,?,?,?,?,?,?)
+        """, (title, price, location, size, description, image_path, session["user_id"]))
         conn.commit()
         conn.close()
 
-        flash("Property added.")
+        flash("Property added successfully.")
         return redirect(url_for("owner_dashboard"))
 
     return render_template("add_property.html")
 
 
 # -----------------------
-# Edit Property (Owner) - UPDATE
+# onwer edit propery
 # -----------------------
+
 @app.route("/owner/edit/<int:pid>", methods=["GET", "POST"])
 def edit_property(pid):
     if session.get("role") != "owner":
         return redirect(url_for("login"))
 
     conn = get_db()
-    prop = conn.execute("SELECT * FROM properties WHERE id=? AND owner_id=?", (pid, session["user_id"])).fetchone()
+    prop = conn.execute(
+        "SELECT * FROM properties WHERE id=? AND owner_id=?",
+        (pid, session["user_id"])
+    ).fetchone()
+
     if not prop:
-        conn.close()
-        flash("Property not found or unauthorized.")
+        flash("Unauthorized or property not found.")
         return redirect(url_for("owner_dashboard"))
 
     if request.method == "POST":
@@ -410,28 +470,165 @@ def edit_property(pid):
         description = request.form.get("description")
 
         file = request.files.get("image")
-        image_path = prop["image"]
+        image_path = prop["image"] 
+
         if file and file.filename:
             filename = f"{int(datetime.now().timestamp())}_{file.filename}"
-            image_path = os.path.join("static", "uploads", filename)
-            file.save(os.path.join(BASE_DIR, image_path))
+            file.save(os.path.join(UPLOAD_FOLDER, filename))
+            image_path = filename   
 
-        conn.execute(
-            "UPDATE properties SET title=?, price=?, location=?, size=?, description=?, image=? WHERE id=?",
-            (title, price, location, size, description, image_path, pid)
-        )
+        conn.execute("""
+            UPDATE properties
+            SET title=?, price=?, location=?, size=?, description=?, image=?
+            WHERE id=?
+        """, (title, price, location, size, description, image_path, pid))
+
         conn.commit()
         conn.close()
 
-        flash("Property updated.")
+        flash("Property updated successfully.")
         return redirect(url_for("owner_dashboard"))
 
     conn.close()
     return render_template("edit_property.html", property=prop)
 
 
+
+
+# -----------------------------------------
+# OWNER APPROVES USER BOOKING (AUTO CREATE RENT)
+# -----------------------------------------
+@app.route("/owner/approve-booking/<int:bid>")
+def approve_booking(bid):
+    if session.get("role") != "owner":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    booking = conn.execute("""
+        SELECT b.*, p.price, p.owner_id
+        FROM bookings b
+        JOIN properties p ON b.property_id = p.id
+        WHERE b.id = ?
+    """, (bid,)).fetchone()
+
+    if not booking or booking["owner_id"] != session["user_id"]:
+        flash("Unauthorized or invalid booking.")
+        conn.close()
+        return redirect(url_for("owner_bookings"))
+
+    # Approve booking (keeps status Approved)
+    conn.execute("UPDATE bookings SET status='Approved' WHERE id=?", (bid,))
+
+    conn.commit()
+    conn.close()
+
+    flash("Booking approved. Please create an agreement for the tenant.")
+    # Redirect owner to create agreement page immediately
+    return redirect(url_for("owner_create_agreement", bid=bid))
+
+# Owner: create agreement for a booking
+@app.route("/owner/create-agreement/<int:bid>", methods=["GET", "POST"])
+def owner_create_agreement(bid):
+    if session.get("role") != "owner":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    booking = conn.execute("""
+        SELECT b.*, p.title AS property_title, p.id AS property_id, p.price AS prop_price, p.owner_id, u.name AS tenant_name, u.id as tenant_id
+        FROM bookings b
+        JOIN properties p ON b.property_id = p.id
+        JOIN users u ON b.tenant_id = u.id
+        WHERE b.id=?
+    """, (bid,)).fetchone()
+
+    if not booking or booking["owner_id"] != session["user_id"]:
+        conn.close()
+        flash("Invalid booking or unauthorized.")
+        return redirect(url_for("owner_bookings"))
+
+    if request.method == "POST":
+        years = int(request.form.get("years") or 1)
+        advance = float(request.form.get("advance") or 0)
+        monthly_rent = float(request.form.get("monthly_rent") or booking["prop_price"] or 0)
+        terms = request.form.get("terms") or ""
+        pdf_file = request.files.get("agreement_pdf")
+        pdf_path = None
+
+        if pdf_file and pdf_file.filename:
+            filename = f"agreement_{int(datetime.now().timestamp())}_{pdf_file.filename}"
+            pdf_file.save(os.path.join(UPLOAD_FOLDER, filename))
+            pdf_path = filename
+
+        conn.execute("""
+            INSERT INTO agreements(booking_id, property_id, owner_id, tenant_id, years, advance_amount, monthly_rent, terms, pdf_path, status, created_at)
+            VALUES(?,?,?,?,?,?,?,?,?, 'Pending', ?)
+        """, (bid, booking["property_id"], booking["owner_id"], booking["tenant_id"], years, advance, monthly_rent, terms, pdf_path, datetime.now().isoformat()))
+
+        conn.commit()
+        conn.close()
+
+        flash("Agreement created and sent to tenant. Waiting for their acceptance.")
+        return redirect(url_for("owner_bookings"))
+
+    conn.close()
+    return render_template("owner_create_agreement.html", booking=booking)
+
+
 # -----------------------
-# Delete Property (Owner) - DELETE
+# onwer bookings particulor user
+# -----------------------
+@app.route("/owner/bookings")
+def owner_bookings():
+    if session.get("role") != "owner":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    bookings = conn.execute("""
+        SELECT b.*, 
+               p.title AS property_title,
+               u.name AS tenant_name
+        FROM bookings b
+        JOIN properties p ON b.property_id = p.id
+        JOIN users u ON b.tenant_id = u.id
+        WHERE p.owner_id=?
+        ORDER BY b.id DESC
+    """, (session["user_id"],)).fetchall()
+    conn.close()
+
+    return render_template("owner_bookings.html", bookings=bookings)
+
+# -----------------------
+# onwer booking reject
+# -----------------------
+@app.route("/owner/reject-booking/<int:bid>")
+def reject_booking(bid):
+    if session.get("role") != "owner":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+
+    booking = conn.execute("""
+        SELECT b.*, p.owner_id
+        FROM bookings b
+        JOIN properties p ON b.property_id = p.id
+        WHERE b.id=?
+    """, (bid,)).fetchone()
+
+    if not booking or booking["owner_id"] != session["user_id"]:
+        flash("Unauthorized or invalid booking.")
+        return redirect(url_for("owner_bookings"))
+
+    # mark as rejected
+    conn.execute("UPDATE bookings SET status='Rejected' WHERE id=?", (bid,))
+    conn.commit()
+    conn.close()
+
+    flash("Booking rejected.")
+    return redirect(url_for("owner_bookings"))
+
+# -----------------------
+# delete property
 # -----------------------
 @app.route("/owner/delete/<int:pid>")
 def delete_property(pid):
@@ -439,11 +636,13 @@ def delete_property(pid):
         return redirect(url_for("login"))
 
     conn = get_db()
-    # verify owner
-    prop = conn.execute("SELECT * FROM properties WHERE id=? AND owner_id=?", (pid, session["user_id"])).fetchone()
+
+    prop = conn.execute("""
+        SELECT * FROM properties WHERE id=? AND owner_id=?
+    """, (pid, session["user_id"])).fetchone()
+
     if not prop:
-        conn.close()
-        flash("Property not found or unauthorized.")
+        flash("Unauthorized.")
         return redirect(url_for("owner_dashboard"))
 
     conn.execute("DELETE FROM properties WHERE id=?", (pid,))
@@ -452,43 +651,87 @@ def delete_property(pid):
     conn.commit()
     conn.close()
 
-    flash("Property and related records deleted.")
+    flash("Property deleted.")
     return redirect(url_for("owner_dashboard"))
 
 
 # -----------------------
-# Owner: Add Monthly Rent for a Tenant
+# ownser complaint display
 # -----------------------
-@app.route("/owner/add-rent/<int:pid>", methods=["GET", "POST"])
-def add_rent(pid):
+@app.route("/owner/complaints")
+def owner_complaints():
     if session.get("role") != "owner":
         return redirect(url_for("login"))
 
     conn = get_db()
-    prop = conn.execute("SELECT * FROM properties WHERE id=? AND owner_id=?", (pid, session["user_id"])).fetchone()
-    if not prop:
-        conn.close()
-        flash("Property not found or unauthorized.")
-        return redirect(url_for("owner_dashboard"))
-
-    if request.method == "POST":
-        tenant_id = request.form.get("tenant_id")  # tenant user id
-        month = request.form.get("month")  # e.g., "March"
-        year = int(request.form.get("year"))
-        amount = float(request.form.get("amount"))
-
-        conn.execute(
-            "INSERT INTO rent_payments (property_id, tenant_id, month, year, amount, status, created_at) VALUES (?,?,?,?,?,?,?)",
-            (pid, tenant_id, month, year, amount, "Unpaid", datetime.now().isoformat())
-        )
-        conn.commit()
-        conn.close()
-        flash("Monthly rent record added.")
-        return redirect(url_for("owner_dashboard"))
-
-    tenants = conn.execute("SELECT * FROM users WHERE role='user'").fetchall()
+    complaints = conn.execute("""
+        SELECT c.*, p.title AS property_title, u.name AS tenant_name
+        FROM complaints c
+        JOIN properties p ON c.property_id = p.id
+        JOIN users u ON c.tenant_id = u.id
+        WHERE p.owner_id = ?
+        ORDER BY c.id DESC
+    """, (session["user_id"],)).fetchall()
     conn.close()
-    return render_template("add_rent.html", property=prop, tenants=tenants)
+
+    return render_template("owner_complaints.html", complaints=complaints)
+
+
+# -----------------------
+# owner payments display 
+# -----------------------
+@app.route("/owner/rent-payments")
+def owner_rent_payments():
+    if session.get("role") != "owner":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    rents = conn.execute("""
+        SELECT r.*, 
+               p.title AS property_title,
+               u.name AS tenant_name
+        FROM rent_payments r
+        JOIN properties p ON r.property_id = p.id
+        JOIN users u ON r.tenant_id = u.id
+        WHERE p.owner_id=?
+        ORDER BY r.year DESC, r.month DESC
+    """, (session["user_id"],)).fetchall()
+
+    conn.close()
+    return render_template("owner_rent_payments.html", rents=rents)
+
+# -----------------------
+#  Onwer Complaints update
+# -----------------------
+@app.route("/owner/complaint/update/<int:cid>", methods=["POST"])
+def owner_update_complaint(cid):
+    if session.get("role") != "owner":
+        return redirect(url_for("login"))
+
+    new_status = request.form.get("status")
+    conn = get_db()
+
+    valid = conn.execute("""
+        SELECT c.* FROM complaints c
+        JOIN properties p ON c.property_id=p.id
+        WHERE c.id=? AND p.owner_id=?
+    """, (cid, session["user_id"])).fetchone()
+
+    if not valid:
+        flash("Unauthorized.")
+        return redirect(url_for("owner_dashboard"))
+
+    conn.execute("""
+        UPDATE complaints SET status=?, updated_at=?
+        WHERE id=?
+    """, (new_status, datetime.now().isoformat(), cid))
+
+    conn.commit()
+    conn.close()
+
+    flash("Complaint updated.")
+    return redirect(url_for("owner_dashboard"))
+
 
 
 # -----------------------
@@ -500,19 +743,246 @@ def user_dashboard():
         return redirect(url_for("login"))
 
     conn = get_db()
-    properties = conn.execute("SELECT * FROM properties").fetchall()
-    rents = conn.execute(
-        "SELECT r.*, p.title as property_title, u_o.name as owner_name "
-        "FROM rent_payments r LEFT JOIN properties p ON r.property_id=p.id LEFT JOIN users u_o ON p.owner_id=u_o.id "
-        "WHERE r.tenant_id=? ORDER BY r.year DESC, r.month DESC",
-        (session["user_id"],)
-    ).fetchall()
+
+    properties = conn.execute("""
+        SELECT p.*, u.name AS owner_name
+        FROM properties p
+        LEFT JOIN users u ON p.owner_id = u.id
+        WHERE p.id NOT IN (
+            SELECT property_id FROM bookings WHERE status = 'Approved'
+        )
+    """).fetchall()
+
+    rents = conn.execute("""
+        SELECT r.*, p.title AS property_title, u.name AS owner_name
+        FROM rent_payments r
+        LEFT JOIN properties p ON r.property_id = p.id
+        LEFT JOIN users u ON p.owner_id = u.id
+        WHERE r.tenant_id=?
+        ORDER BY r.year DESC, r.month DESC
+    """, (session["user_id"],)).fetchall()
+
     conn.close()
-    return render_template("user_dashboard.html", properties=properties, rents=rents)
+
+    locations = sorted(list({p["location"] for p in properties}))
+
+    return render_template("user_dashboard.html",
+                           properties=properties,
+                           rents=rents,
+                           locations=locations)
+
+
+# User: list agreements sent to them
+@app.route("/user/agreements")
+def user_agreements():
+    if session.get("role") != "user":
+        return redirect(url_for("login"))
+    conn = get_db()
+    agreements = conn.execute("""
+        SELECT a.*, p.title AS property_title, u_o.name AS owner_name
+        FROM agreements a
+        JOIN properties p ON a.property_id = p.id
+        LEFT JOIN users u_o ON a.owner_id = u_o.id
+        WHERE a.tenant_id = ?
+        ORDER BY a.id DESC
+    """, (session["user_id"],)).fetchall()
+    conn.close()
+    return render_template("user_agreements.html", agreements=agreements)
+
+
+# User: view single agreement and accept/reject
+@app.route("/user/agreement/<int:aid>", methods=["GET", "POST"])
+def user_view_agreement(aid):
+    if session.get("role") != "user":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    agreement = conn.execute("""
+        SELECT a.*, p.title AS property_title, u_o.name AS owner_name
+        FROM agreements a
+        JOIN properties p ON a.property_id = p.id
+        LEFT JOIN users u_o ON a.owner_id = u_o.id
+        WHERE a.id = ? AND a.tenant_id = ?
+    """, (aid, session["user_id"])).fetchone()
+
+    if not agreement:
+        conn.close()
+        flash("Agreement not found.")
+        return redirect(url_for("user_agreements"))
+
+    if request.method == "POST":
+        action = request.form.get("action")  
+        if action == "accept":
+        
+            conn.execute("""
+                UPDATE agreements SET status='Accepted', accepted_at=?, updated_at=?
+                WHERE id=?
+            """, (datetime.now().isoformat(), datetime.now().isoformat(), aid))
+
+        
+            conn.execute("""
+                INSERT INTO rent_payments(property_id, tenant_id, month, year, amount, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'Unpaid', ?)
+            """, (
+                agreement["property_id"],
+                agreement["tenant_id"],
+                datetime.now().strftime("%B"),
+                datetime.now().year,
+                agreement["monthly_rent"],
+                datetime.now().isoformat()
+            ))
+
+        
+            conn.execute("UPDATE bookings SET status='Pending' WHERE id=?", (agreement["booking_id"],))
+
+            conn.commit()
+            conn.close()
+
+            flash("Agreement accepted. Rent created.")
+            return redirect(url_for("user_dashboard"))
+
+        else:
+            
+            conn.execute("UPDATE agreements SET status='Rejected', updated_at=? WHERE id=?", (datetime.now().isoformat(), aid))
+        
+            conn.execute("UPDATE bookings SET status='Rejected' WHERE id=?", (agreement["booking_id"],))
+            conn.commit()
+            conn.close()
+            flash("Agreement rejected. Booking cancelled.")
+            return redirect(url_for("user_agreements"))
+
+    conn.close()
+    return render_template("user_view_agreement.html", agreement=agreement)
 
 
 # -----------------------
-# Tenant: Pay Rent (simulate mark as paid)
+# User rents and payments dsiplay
+# -----------------------
+@app.route("/user/rents")
+def user_rents():
+    if session.get("role") != "user":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    rents = conn.execute("""
+        SELECT r.*, p.title AS property_title, u.name AS owner_name
+        FROM rent_payments r
+        LEFT JOIN properties p ON r.property_id = p.id
+        LEFT JOIN users u ON p.owner_id = u.id
+        WHERE r.tenant_id=?
+        ORDER BY r.year DESC, r.month DESC
+    """, (session["user_id"],)).fetchall()
+    conn.close()
+
+    return render_template("user_rents.html", rents=rents)
+
+
+# -----------------------
+# User booking property
+# -----------------------
+@app.route("/user/book/<int:pid>", methods=["POST"])
+def book_property(pid):
+    if session.get("role") != "user":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    
+    check = conn.execute("""
+        SELECT * FROM bookings 
+        WHERE property_id=? AND tenant_id=? AND status IN ('Pending','Approved')
+    """, (pid, session["user_id"])).fetchone()
+
+    if check:
+        flash("You already requested this property.")
+        return redirect(url_for("user_dashboard"))
+
+    conn.execute("""
+        INSERT INTO bookings(property_id, tenant_id, status, created_at)
+        VALUES(?,?, 'Pending', ?)
+    """, (pid, session["user_id"], datetime.now().isoformat()))
+
+    conn.commit()
+    conn.close()
+
+    flash("Booking request sent to Owner!")
+    return redirect(url_for("user_dashboard"))
+
+
+# -----------------------
+# Make complaint user side
+# -----------------------
+@app.route("/user/complaint/<int:pid>", methods=["GET", "POST"])
+def raise_complaint(pid):
+    if session.get("role") != "user":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+
+    is_tenant = conn.execute("""
+        SELECT * FROM bookings
+        WHERE property_id=? AND tenant_id=? AND status='Approved'
+    """, (pid, session["user_id"])).fetchone()
+
+    if not is_tenant:
+        conn.close()
+        flash("You are not a tenant of this property.")
+        return redirect(url_for("user_dashboard"))
+
+    if request.method == "POST":
+        title = request.form.get("title")
+        details = request.form.get("details")
+
+        conn.execute("""
+            INSERT INTO complaints(property_id, tenant_id, title, details, status, created_at)
+            VALUES (?,?,?,?, 'Pending', ?)
+        """, (pid, session["user_id"], title, details, datetime.now().isoformat()))
+
+        conn.commit()
+        conn.close()
+        flash("Complaint submitted.")
+        return redirect(url_for("user_dashboard"))
+
+    prop = conn.execute("SELECT * FROM properties WHERE id=?", (pid,)).fetchone()
+    conn.close()
+
+    return render_template("raise_complaint.html", property=prop)
+
+# -----------------------
+# user complaints display 
+# -----------------------
+@app.route("/user/complaints")
+def user_complaints():
+    if session.get("role") != "user":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    complaints = conn.execute("""
+        SELECT c.*, p.title AS property_title
+        FROM complaints c
+        JOIN properties p ON c.property_id = p.id
+        WHERE c.tenant_id=?
+        ORDER BY c.id DESC
+    """, (session["user_id"],)).fetchall()
+
+    properties = conn.execute("""
+        SELECT p.*
+        FROM properties p
+        JOIN bookings b ON p.id=b.property_id
+        WHERE b.tenant_id=? AND b.status='Approved'
+    """, (session["user_id"],)).fetchall()
+
+    conn.close()
+
+    return render_template("user_complaints.html",
+                           complaints=complaints,
+                           properties=properties)
+
+
+# -----------------------
+# user payrent
 # -----------------------
 @app.route("/user/pay-rent/<int:rid>", methods=["POST"])
 def pay_rent(rid):
@@ -520,52 +990,31 @@ def pay_rent(rid):
         return redirect(url_for("login"))
 
     conn = get_db()
-    rent = conn.execute("SELECT * FROM rent_payments WHERE id=? AND tenant_id=?", (rid, session["user_id"])).fetchone()
+    rent = conn.execute(
+        "SELECT * FROM rent_payments WHERE id=? AND tenant_id=?",
+        (rid, session["user_id"])
+    ).fetchone()
+
     if not rent:
         conn.close()
         flash("Rent record not found or unauthorized.")
         return redirect(url_for("user_dashboard"))
 
-    # For demo: we simply mark as Paid. Integrate payment gateway if needed.
-    conn.execute("UPDATE rent_payments SET status='Paid', paid_at=? WHERE id=?", (datetime.now().isoformat(), rid))
+    conn.execute("""
+        UPDATE rent_payments
+        SET status='Paid', paid_at=?
+        WHERE id=?
+    """, (datetime.now().isoformat(), rid))
+
     conn.commit()
     conn.close()
 
-    flash("Payment recorded (marked as Paid).")
+    flash("Rent paid successfully!")
     return redirect(url_for("user_dashboard"))
 
 
 # -----------------------
-# Complaint: Tenant raises complaint
-# -----------------------
-@app.route("/user/complaint/<int:pid>", methods=["GET", "POST"])
-def raise_complaint(pid):
-    if session.get("role") != "user":
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        title = request.form.get("title")
-        details = request.form.get("details")
-
-        conn = get_db()
-        conn.execute(
-            "INSERT INTO complaints (property_id, tenant_id, title, details, status, created_at) VALUES (?,?,?,?,?,?)",
-            (pid, session["user_id"], title, details, "Pending", datetime.now().isoformat())
-        )
-        conn.commit()
-        conn.close()
-
-        flash("Complaint submitted.")
-        return redirect(url_for("user_dashboard"))
-
-    conn = get_db()
-    prop = conn.execute("SELECT * FROM properties WHERE id=?", (pid,)).fetchone()
-    conn.close()
-    return render_template("raise_complaint.html", property=prop)
-
-
-# -----------------------
-# Owner/Admin: Update Complaint Status
+# Complaints
 # -----------------------
 @app.route("/complaint/update/<int:cid>", methods=["POST"])
 def update_complaint(cid):
@@ -573,10 +1022,10 @@ def update_complaint(cid):
     if role not in ("owner", "admin"):
         return redirect(url_for("login"))
 
-    new_status = request.form.get("status")  # Pending / In Progress / Resolved
+    new_status = request.form.get("status")  
     conn = get_db()
 
-    # If owner, ensure complaint belongs to their property
+
     if role == "owner":
         c = conn.execute("SELECT c.* FROM complaints c JOIN properties p ON c.property_id=p.id WHERE c.id=? AND p.owner_id=?", (cid, session["user_id"])).fetchone()
         if not c:
@@ -595,29 +1044,10 @@ def update_complaint(cid):
         return redirect(url_for("owner_dashboard"))
 
 
-# -----------------------
-# Admin: Update Rent Status (mark Paid/Unpaid) or correct mistakes
-# -----------------------
-@app.route("/admin/update-rent/<int:rid>", methods=["POST"])
-def admin_update_rent(rid):
-    if session.get("role") != "admin":
-        return redirect(url_for("login"))
-
-    new_status = request.form.get("status")  # Paid / Unpaid
-    conn = get_db()
-    if new_status == "Paid":
-        conn.execute("UPDATE rent_payments SET status='Paid', paid_at=? WHERE id=?", (datetime.now().isoformat(), rid))
-    else:
-        conn.execute("UPDATE rent_payments SET status='Unpaid', paid_at=NULL WHERE id=?", (rid,))
-    conn.commit()
-    conn.close()
-
-    flash("Rent status updated.")
-    return redirect(url_for("admin_dashboard"))
 
 
 # -----------------------
-# Serve uploaded images (optional)
+# Serve uploaded images 
 # -----------------------
 @app.route("/static/uploads/<path:filename>")
 def uploaded_file(filename):
@@ -636,6 +1066,161 @@ def view_property(pid):
         flash("Property not found.")
         return redirect(url_for("home"))
     return render_template("view_property.html", property=prop)
+
+
+
+
+
+
+# -----------------------
+# Admin Dashboard
+# -----------------------
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+
+    # Fetch all data for dashboard analytics
+    users = conn.execute("SELECT * FROM users").fetchall()
+    owners = conn.execute("""
+        SELECT * FROM users WHERE role='owner'
+    """).fetchall()
+    tenants = conn.execute("""
+        SELECT * FROM users WHERE role='user'
+    """).fetchall()
+
+    properties = conn.execute("SELECT * FROM properties").fetchall()
+    bookings = conn.execute("SELECT * FROM bookings").fetchall()
+    complaints = conn.execute("SELECT * FROM complaints").fetchall()
+
+    rents = conn.execute("""
+        SELECT * FROM rent_payments
+    """).fetchall()
+
+    # Stats for dashboard
+    total_revenue = conn.execute("""
+        SELECT COALESCE(SUM(amount), 0)
+        FROM rent_payments
+        WHERE status='Paid'
+    """).fetchone()[0]
+
+    pending_complaints = conn.execute("""
+        SELECT COUNT(*) FROM complaints WHERE status='Pending'
+    """).fetchone()[0]
+
+    conn.close()
+
+    return render_template(
+        "admin_dashboard.html",
+        users=users,
+        owners=owners,
+        tenants=tenants,
+        properties=properties,
+        bookings=bookings,
+        complaints=complaints,
+        rents=rents,
+        total_revenue=total_revenue,
+        pending_complaints=pending_complaints
+    )
+
+@app.route("/admin/agreements")
+def admin_agreements():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+    conn = get_db()
+    agreements = conn.execute("""
+        SELECT a.*, p.title AS property_title, u_t.name AS tenant_name, u_o.name AS owner_name
+        FROM agreements a
+        LEFT JOIN properties p ON a.property_id = p.id
+        LEFT JOIN users u_t ON a.tenant_id = u_t.id
+        LEFT JOIN users u_o ON a.owner_id = u_o.id
+        ORDER BY a.id DESC
+    """).fetchall()
+    conn.close()
+    return render_template("admin_agreements.html", agreements=agreements)
+
+@app.route("/admin/users")
+def admin_users():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    users = conn.execute("SELECT * FROM users").fetchall()
+    conn.close()
+    return render_template("admin_users.html", users=users)
+
+@app.route("/admin/owners")
+def admin_owners():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    owners = conn.execute("SELECT * FROM users WHERE role='owner'").fetchall()
+    conn.close()
+    return render_template("admin_owners.html", owners=owners)
+
+@app.route("/admin/properties")
+def admin_properties():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    properties = conn.execute("""
+        SELECT p.*, u.name AS owner_name 
+        FROM properties p 
+        LEFT JOIN users u ON p.owner_id = u.id
+    """).fetchall()
+    conn.close()
+    return render_template("admin_properties.html", properties=properties)
+
+@app.route("/admin/complaints")
+def admin_complaints():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    complaints = conn.execute("""
+        SELECT c.*, p.title AS property_title, u.name AS tenant_name
+        FROM complaints c
+        JOIN properties p ON c.property_id = p.id
+        JOIN users u ON c.tenant_id = u.id
+    """).fetchall()
+    conn.close()
+    return render_template("admin_complaints.html", complaints=complaints)
+
+@app.route("/admin/payments")
+def admin_payments():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    payments = conn.execute("""
+        SELECT r.*, p.title AS property_title, u.name AS tenant_name
+        FROM rent_payments r
+        JOIN properties p ON r.property_id = p.id
+        JOIN users u ON r.tenant_id = u.id
+    """).fetchall()
+    conn.close()
+    return render_template("admin_payments.html", rents=payments)
+
+@app.route("/admin/bookings")
+def admin_bookings():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    bookings = conn.execute("""
+        SELECT b.*, p.title AS property_title, u.name AS tenant_name
+        FROM bookings b
+        JOIN properties p ON b.property_id = p.id
+        JOIN users u ON b.tenant_id = u.id
+    """).fetchall()
+    conn.close()
+    return render_template("admin_bookings.html", bookings=bookings)
+
+
 
 
 # -----------------------
@@ -706,15 +1291,45 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+CREATE TABLE IF NOT EXISTS agreements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INTEGER,
+    property_id INTEGER,
+    owner_id INTEGER,
+    tenant_id INTEGER,
+    years INTEGER,
+    advance_amount REAL,
+    monthly_rent REAL,
+    terms TEXT,
+    pdf_path TEXT,
+    status TEXT DEFAULT 'Pending',  
+    created_at TEXT,
+    updated_at TEXT,
+    accepted_at TEXT
+)
+""")
     
-    cur.execute("INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)",
-                ("Admin", "admin@gmail.com", "admin", "admin"))
-
+    # bookings
+    cur.execute("""
+    CREATE TABLE bookings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        property_id INTEGER,
+        tenant_id INTEGER,
+        status TEXT,          -- Pending / Approved / Rejected
+        created_at TEXT
+    )
+    """)
+  
     conn.commit()
     conn.close()
 
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     init_db()
-    # set debug=False in production
+
     app.run(debug=True)

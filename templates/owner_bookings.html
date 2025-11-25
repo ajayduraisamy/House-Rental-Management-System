@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}Booking Requests{% endblock %}
+
+{% block content %}
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+    }
+
+    .header-title h2 {
+        font-weight: 800;
+        margin: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2rem;
+    }
+
+    .header-stats {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.7;
+        font-weight: 600;
+    }
+
+
+    .requests-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 25px;
+    }
+
+    
+    .request-card {
+        background-color: var(--card-bg);
+        border-radius: 20px;
+        padding: 25px;
+        position: relative;
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        overflow: hidden;
+        animation: popIn 0.5s ease-out backwards;
+    }
+
+    
+    .request-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    
+    .request-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        
+        background: #ccc;
+    }
+
+
+    .status-pending::before {
+        background: #f59e0b;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    }
+
+    .status-approved::before {
+        background: #10b981;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    }
+
+    .status-rejected::before {
+        background: #ef4444;
+    }
+
+
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .tenant-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 10px rgba(118, 75, 162, 0.3);
+    }
+
+    .tenant-details h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-color);
+    }
+
+    .tenant-details span {
+        font-size: 0.8rem;
+        opacity: 0.6;
+        color: var(--text-color);
+    }
+
+    .date-badge {
+        font-size: 0.75rem;
+        background: rgba(128, 128, 128, 0.1);
+        padding: 5px 10px;
+        border-radius: 10px;
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    /* --- CARD BODY (Property) --- */
+    .card-mid {
+        background: var(--bg-color);
+        /* Slightly different shade */
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(128, 128, 128, 0.1);
+    }
+
+    .prop-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-color);
+    }
+
+    .prop-icon {
+        color: #764ba2;
+        font-size: 1.1rem;
+    }
+
+    .prop-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    /* --- CARD FOOTER (Actions) --- */
+    .card-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    /* Action Buttons */
+    .btn-card {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-approve {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-approve:hover {
+        transform: scale(1.02);
+        color: white;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-reject {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .btn-reject:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    /* Status Text (for non-pending) */
+    .status-text {
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    .text-approved {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .text-rejected {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    
+    .empty-wrapper {
+        text-align: center;
+        padding: 80px 20px;
+        opacity: 0.6;
+    }
+
+    @keyframes popIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+</style>
+
+<div class="container py-5">
+
+    <div class="dashboard-header">
+        <div class="header-title">
+            <h2>Inbox</h2>
+            <p style="margin:0; color:var(--text-color); opacity:0.6;">Manage your booking requests</p>
+        </div>
+        <div class="header-stats">
+            {{ bookings|length }} Total Request(s)
+        </div>
+    </div>
+
+    {% if bookings %}
+    <div class="requests-grid">
+        {% for b in bookings %}
+
+        {% set status_class = 'status-pending' %}
+        {% if b.status == 'Approved' %} {% set status_class = 'status-approved' %} {% endif %}
+        {% if b.status == 'Rejected' %} {% set status_class = 'status-rejected' %} {% endif %}
+
+        <div class="request-card {{ status_class }}" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+
+            <div class="card-top">
+                <div class="tenant-profile">
+                    <div class="avatar-circle">
+                        {{ b.tenant_name[0] | upper }}
+                    </div>
+                    <div class="tenant-details">
+                        <h5>{{ b.tenant_name }}</h5>
+                        <span>Tenant Applicant</span>
+                    </div>
+                </div>
+                <div class="date-badge">
+                    {{ b.created_at.split("T")[0] }}
+                </div>
+            </div>
+
+            <div class="card-mid">
+                <div class="prop-row">
+                    <i class="fas fa-home prop-icon"></i>
+                    <span class="prop-title">{{ b.property_title }}</span>
+                </div>
+                <div
+                    style="margin-top: 5px; padding-left: 28px; font-size: 0.8rem; opacity: 0.6; color: var(--text-color);">
+                    Request ID: #{{ b.id }}
+                </div>
+            </div>
+
+            <div class="card-actions">
+                {% if b.status == "Pending" %}
+                <a href="{{ url_for('approve_booking', bid=b.id) }}" class="btn-card btn-approve">
+                    <i class="fas fa-check"></i> Approve
+                </a>
+                <a href="{{ url_for('reject_booking', bid=b.id) }}" class="btn-card btn-reject"
+                    onclick="return confirm('Reject this request?');">
+                    <i class="fas fa-times"></i> Reject
+                </a>
+                {% elif b.status == "Approved" %}
+                <div class="status-text text-approved">
+                    <i class="fas fa-check-circle me-2"></i> Approved
+                </div>
+                {% else %}
+                <div class="status-text text-rejected">
+                    <i class="fas fa-times-circle me-2"></i> Rejected
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-wrapper">
+        <i class="far fa-folder-open fa-4x mb-3"></i>
+        <h4>No Pending Requests</h4>
+        <p>You are all caught up! Check back later.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

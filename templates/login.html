@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* Center the card vertically */
+    .auth-wrapper {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    /* Premium Card Styling */
+    .auth-card {
+        background-color: var(--card-bg) !important;
+        /* Force correct card color */
+        width: 100%;
+        max-width: 450px;
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Top Gradient Border */
+    .auth-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Header Styling */
+    .auth-header h3 {
+        font-weight: 800;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .auth-header p {
+        color: var(--text-color);
+        opacity: 0.6;
+        font-size: 0.95rem;
+    }
+
+    /* --- DARK MODE INPUT FIXES --- */
+
+    /* 1. Force Background and Text Color on Inputs & Icons */
+    .form-control,
+    .input-group-text {
+        background-color: var(--bg-color) !important;
+        /* Use theme variable */
+        color: var(--text-color) !important;
+        /* Use theme variable */
+        border: 1px solid rgba(128, 128, 128, 0.3) !important;
+    }
+
+    /* 2. Fix Placeholder Text Visibility */
+    .form-control::placeholder {
+        color: var(--text-color) !important;
+        opacity: 0.5;
+    }
+
+    /* 3. Input Group Styling */
+    .input-group-text {
+        border-right: none !important;
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+        padding: 12px 15px;
+        /* Match padding */
+    }
+
+    .input-group-text i {
+        color: #764ba2;
+        /* Keep icon purple */
+    }
+
+    .form-control {
+        border-left: none !important;
+        padding: 12px 15px;
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+        transition: all 0.3s;
+    }
+
+    /* 4. Focus State */
+    .form-control:focus {
+        border-color: #764ba2 !important;
+        box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2) !important;
+    }
+
+    /* Highlight icon border on focus */
+    .form-control:focus+.input-group-text,
+    .input-group:focus-within .input-group-text {
+        border-color: #764ba2 !important;
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-color);
+        opacity: 0.8;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Login Button */
+    .btn-login {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 0.5px;
+        box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(118, 75, 162, 0.4);
+        color: white;
+    }
+
+    /* Links */
+    .auth-links {
+        margin-top: 25px;
+        text-align: center;
+        font-size: 0.95rem;
+        color: var(--text-color);
+    }
+
+    .auth-links a {
+        color: #764ba2;
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.2s;
+    }
+
+    .auth-links a:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="auth-wrapper">
+
+    <div class="auth-card">
+
+        <div class="auth-header text-center mb-4">
+            <h3>Welcome Back</h3>
+            <p>Enter your credentials to access your account</p>
+        </div>
+
+        <form method="POST">
+
+            <div class="mb-4">
+                <label class="form-label">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-envelope"></i>
+                    </span>
+                    <input type="email" name="email" class="form-control" required placeholder="name@example.com">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Password</label>
+                    <a href="{{ url_for('forgot') }}"
+                        style="font-size: 0.85rem; color: #764ba2; text-decoration: none; font-weight: 600;">
+                        Forgot Password?
+                    </a>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" name="password" class="form-control" required
+                        placeholder="Enter your password">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login">
+                Login <i class="fas fa-arrow-right ms-2"></i>
+            </button>
+
+            <div class="auth-links">
+                <span style="opacity: 0.7;">New to our platform?</span>
+                <a href="{{ url_for('register') }}" class="ms-1">Create an account</a>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% block title %}User Dashboard{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* NOTE: We removed :root {} to let base.html handle colors */
+
+    /* Dashboard Header */
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+    }
+
+    .dashboard-header h2 {
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        /* Gradient Text works on both Dark & Light */
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+    }
+
+    .dashboard-header p {
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    /* --- GLASSMORPHISM ADAPTIVE --- */
+    .filter-glass {
+        /* Default Light Mode Glass */
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    /* Dark Mode Override for Glass */
+    [data-theme="dark"] .filter-glass {
+        background: rgba(30, 41, 59, 0.7);
+        /* Dark slate glass */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-glass:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Inputs Adaptive Colors */
+    .form-control,
+    .form-select {
+        border-radius: 12px;
+        padding: 12px 15px;
+        transition: all 0.3s;
+        /* Use Base Variables */
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+        border-color: #764ba2;
+        background-color: var(--card-bg);
+        color: var(--text-color);
+    }
+
+    /* Property Card Styling */
+    .property-card-inner {
+        border: none;
+        border-radius: 20px;
+        overflow: hidden;
+        /* Use Base Variable for Background */
+        background: var(--card-bg);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        height: 100%;
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        /* Subtle border for dark mode definition */
+    }
+
+    .property-card-inner:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Image Styling */
+    .img-wrapper {
+        overflow: hidden;
+        position: relative;
+        height: 220px;
+    }
+
+    .img-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .property-card-inner:hover .img-wrapper img {
+        transform: scale(1.1);
+    }
+
+    /* Card Content */
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .property-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+        /* Adaptive Text */
+    }
+
+    .property-details {
+        color: var(--text-color);
+        opacity: 0.7;
+        /* Muted effect via opacity instead of hardcoded color */
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+
+    .property-details i {
+        color: #764ba2;
+        width: 20px;
+        text-align: center;
+        margin-right: 5px;
+    }
+
+    .price-tag {
+        color: var(--text-color);
+        font-weight: 800;
+        font-size: 1.1rem;
+    }
+
+    /* Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 1rem;
+    }
+
+    .btn-custom-primary {
+        flex: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: 600;
+        transition: opacity 0.3s;
+    }
+
+    .btn-custom-outline {
+        flex: 1;
+        background: transparent;
+        border: 2px solid #764ba2;
+        color: #764ba2;
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-custom-primary:hover {
+        opacity: 0.9;
+        color: white;
+    }
+
+    .btn-custom-outline:hover {
+        background: #764ba2;
+        color: white;
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translate3d(0, 40px, 0);
+        }
+
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    .animate-card {
+        animation-name: fadeInUp;
+        animation-duration: 0.6s;
+        animation-fill-mode: both;
+    }
+</style>
+
+<div class="container py-5">
+
+    <div class="dashboard-header">
+        <h2>Find Your Dream Space</h2>
+        <p>Explore premium properties curated just for you.</p>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-info shadow-sm rounded-3 border-0 mb-4">
+        <i class="fas fa-info-circle me-2"></i> {{ msg }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card p-4 mb-5 filter-glass">
+        <div class="row g-3 align-items-center">
+
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-uppercase"
+                    style="color: var(--text-color); opacity: 0.7;">Search</label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0 rounded-start-3"
+                        style="background: var(--card-bg); border-color: rgba(128,128,128,0.2);">
+                        <i class="fas fa-search" style="color: var(--text-color); opacity: 0.5;"></i>
+                    </span>
+                    <input id="searchInput" type="text" class="form-control border-start-0"
+                        placeholder="Apartment, Villa, Studio...">
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-uppercase"
+                    style="color: var(--text-color); opacity: 0.7;">Price Range</label>
+                <select id="priceFilter" class="form-select">
+                    <option value="default">Recommended</option>
+                    <option value="low">Price: Low to High</option>
+                    <option value="high">Price: High to Low</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase"
+                    style="color: var(--text-color); opacity: 0.7;">Location</label>
+                <select id="locationFilter" class="form-select">
+                    <option value="all">All Locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc }}">{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="row g-4" id="propertyList">
+        {% for p in properties %}
+        <div class="col-md-6 col-lg-4 property-card animate-card" style="animation-delay: {{ loop.index0 * 0.1 }}s"
+            data-title="{{ p.title | lower }}" data-location="{{ p.location | lower }}" data-price="{{ p.price }}">
+
+            <div class="card property-card-inner h-100">
+
+                <div class="img-wrapper">
+                    {% if p.image %}
+                    <img src="{{ url_for('uploaded_file', filename=p.image) }}" alt="{{ p.title }}">
+                    {% else %}
+                    <img src="https://via.placeholder.com/400x300?text=No+Image" alt="No Image">
+                    {% endif %}
+
+                    <div class="position-absolute top-0 end-0 m-3">
+                        <span class="badge bg-white text-dark shadow-sm rounded-pill px-3 py-2">
+                            <i class="fas fa-star text-warning"></i> Featured
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="property-title text-truncate">{{ p.title }}</h5>
+
+                    <div class="property-details mt-2">
+                        <div class="mb-2"><i class="fas fa-map-marker-alt"></i> {{ p.location }}</div>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-tag"></i>
+                            <span class="price-tag">Rs. {{ p.price }}</span>
+                            <span class="small ms-1 text-muted">/ month</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto">
+                        <hr style="border-color: var(--text-color); opacity: 0.1;">
+                        <div class="action-buttons">
+                            <a href="{{ url_for('view_property', pid=p.id) }}" class="btn btn-custom-outline btn-sm">
+                                View Details
+                            </a>
+
+                            <form action="{{ url_for('book_property', pid=p.id) }}" method="POST" class="flex-fill"
+                                onsubmit="return confirm('Are you sure you want to book this property?');">
+                                <button class="btn btn-custom-primary btn-sm w-100">
+                                    Book Now
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="noResults" class="text-center py-5" style="display: none;">
+        <i class="fas fa-search fa-3x mb-3" style="color: var(--text-color); opacity: 0.3;"></i>
+        <h4 style="color: var(--text-color);">No properties found</h4>
+        <p style="color: var(--text-color); opacity: 0.6;">Try adjusting your search or filters</p>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("searchInput");
+        const priceFilter = document.getElementById("priceFilter");
+        const locationFilter = document.getElementById("locationFilter");
+        const noResultsMsg = document.getElementById("noResults");
+        const getCards = () => Array.from(document.querySelectorAll(".property-card"));
+
+        function filterProperties() {
+            let searchText = searchInput.value.toLowerCase();
+            let selectedPrice = priceFilter.value;
+            let selectedLocation = locationFilter.value.toLowerCase();
+            let cardArray = getCards();
+            let visibleCount = 0;
+
+            cardArray.forEach(card => {
+                let title = card.dataset.title;
+                let location = card.dataset.location;
+                let matchSearch = title.includes(searchText) || location.includes(searchText);
+                let matchLocation = selectedLocation === "all" || location === selectedLocation;
+
+                if (matchSearch && matchLocation) {
+                    card.style.display = "block";
+                    card.classList.remove('animate-card');
+                    void card.offsetWidth;
+                    card.classList.add('animate-card');
+                    visibleCount++;
+                } else {
+                    card.style.display = "none";
+                }
+            });
+
+            noResultsMsg.style.display = visibleCount === 0 ? "block" : "none";
+
+            if (selectedPrice !== "default") {
+                let visibleCards = cardArray.filter(c => c.style.display !== "none");
+                visibleCards.sort((a, b) => {
+                    let priceA = parseFloat(a.dataset.price);
+                    let priceB = parseFloat(b.dataset.price);
+                    return selectedPrice === "low" ? priceA - priceB : priceB - priceA;
+                });
+                let list = document.getElementById("propertyList");
+                visibleCards.forEach(card => list.appendChild(card));
+            }
+        }
+
+        searchInput.addEventListener("input", filterProperties);
+        priceFilter.addEventListener("change", filterProperties);
+        locationFilter.addEventListener("change", filterProperties);
+    });
+</script>
+
+{% endblock %}

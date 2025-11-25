@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}List New Property{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* --- PAGE LAYOUT --- */
+    .page-container {
+        padding: 40px 20px;
+        min-height: 85vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .property-card {
+        background-color: var(--card-bg) !important;
+        width: 100%;
+        max-width: 800px;
+        /* Wider card for form */
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        position: relative;
+        overflow: hidden;
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    /* Top Gradient Border (Ocean Blue) */
+    .property-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 8px;
+        background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+    }
+
+    /* --- HEADER --- */
+    .form-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .header-icon {
+        width: 60px;
+        height: 60px;
+        background: rgba(42, 82, 152, 0.1);
+        color: #1e3c72;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 15px auto;
+    }
+
+    .form-header h3 {
+        font-weight: 800;
+        color: var(--text-color);
+        margin-bottom: 5px;
+    }
+
+    .form-header p {
+        color: var(--text-color);
+        opacity: 0.6;
+    }
+
+    /* --- INPUT STYLING (Dark Mode Safe) --- */
+    .form-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-color);
+        opacity: 0.7;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .input-group-text {
+        background-color: var(--bg-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.3) !important;
+        border-right: none !important;
+        color: #2a5298 !important;
+        /* Blue Icon */
+        border-radius: 12px 0 0 12px;
+        padding: 12px 15px;
+    }
+
+    .form-control {
+        background-color: var(--bg-color) !important;
+        color: var(--text-color) !important;
+        border: 1px solid rgba(128, 128, 128, 0.3) !important;
+        border-left: none !important;
+        border-radius: 0 12px 12px 0;
+        padding: 12px 15px;
+        transition: all 0.3s;
+    }
+
+    /* Textarea adjustment */
+    textarea.form-control {
+        border-left: 1px solid rgba(128, 128, 128, 0.3) !important;
+        border-radius: 12px !important;
+    }
+
+    .form-control::placeholder {
+        color: var(--text-color) !important;
+        opacity: 0.5;
+    }
+
+    .form-control:focus {
+        border-color: #2a5298 !important;
+        box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.2) !important;
+    }
+
+    /* Highlight icon on focus */
+    .form-control:focus+.input-group-text,
+    .input-group:focus-within .input-group-text {
+        border-color: #2a5298 !important;
+        background-color: var(--card-bg) !important;
+    }
+
+    /* --- FILE UPLOAD (Custom Drop Zone Look) --- */
+    .file-upload-wrapper {
+        position: relative;
+        height: 100px;
+        border: 2px dashed rgba(128, 128, 128, 0.3);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bg-color);
+        transition: all 0.3s;
+        overflow: hidden;
+    }
+
+    .file-upload-wrapper:hover {
+        border-color: #2a5298;
+        background-color: rgba(42, 82, 152, 0.05);
+    }
+
+    .file-upload-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .file-upload-label {
+        text-align: center;
+        pointer-events: none;
+        color: var(--text-color);
+        opacity: 0.7;
+    }
+
+    .file-upload-label i {
+        font-size: 1.5rem;
+        color: #2a5298;
+        margin-bottom: 5px;
+    }
+
+    /* --- BUTTON --- */
+    .btn-ocean {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        border: none;
+        width: 100%;
+        padding: 15px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-top: 10px;
+        box-shadow: 0 10px 20px rgba(42, 82, 152, 0.3);
+        transition: transform 0.2s;
+    }
+
+    .btn-ocean:hover {
+        transform: translateY(-3px);
+        color: white;
+        box-shadow: 0 15px 25px rgba(42, 82, 152, 0.4);
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="page-container">
+
+    <div class="property-card">
+
+        <div class="form-header">
+            <div class="header-icon">
+                <i class="fas fa-home"></i>
+            </div>
+            <h3>List Your Property</h3>
+            <p>Fill in the details to reach potential tenants</p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+
+            <div class="mb-4">
+                <label class="form-label">Property Title</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-heading"></i></span>
+                    <input type="text" name="title" class="form-control" required
+                        placeholder="e.g. Luxury Apartment in City Center">
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Rent Price (Monthly)</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-money-bill-wave"></i></span>
+                        <input type="number" name="price" class="form-control" required placeholder="e.g. 15000">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Size (Sq. Ft)</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-ruler-combined"></i></span>
+                        <input type="text" name="size" class="form-control" required placeholder="e.g. 1200 sq ft">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Location / Address</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                    <input type="text" name="location" class="form-control" required
+                        placeholder="e.g. 123 Main St, New York">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Property Description</label>
+                <textarea name="description" class="form-control" rows="4" required
+                    placeholder="Describe amenities, neighborhood, rules..."></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Property Image</label>
+                <div class="file-upload-wrapper">
+                    <input type="file" name="image" class="file-upload-input" accept="image/*">
+                    <div class="file-upload-label">
+                        <i class="fas fa-cloud-upload-alt"></i><br>
+                        <span>Click or Drag image here to upload</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-ocean">
+                <i class="fas fa-check-circle me-2"></i> Publish Listing
+            </button>
+
+        </form>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}All Owners{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    }
+
+    .page-title {
+        font-weight: 800;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    table th {
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    table td {
+        font-size: 0.9rem;
+    }
+
+    .role-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.78rem;
+        background: rgba(59, 130, 246, 0.15);
+        color: #1d4ed8;
+    }
+
+    .badge-verified {
+        background: rgba(16, 185, 129, 0.15);
+        color: #047857;
+        padding: 6px 14px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.78rem;
+    }
+
+    .badge-not-verified {
+        background: rgba(239, 68, 68, 0.15);
+        color: #b91c1c;
+        padding: 6px 14px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.78rem;
+    }
+</style>
+
+<div class="container py-4">
+
+    <div class="page-header">
+        <h2 class="page-title">
+            <i class="fas fa-user-tie me-2"></i>All Owners
+        </h2>
+        <p style="opacity: 0.6;">View and manage all property owners</p>
+    </div>
+
+    {% if owners %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Number</th>
+                    <th>Role</th>
+                    <th>Verified</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for o in owners %}
+                <tr>
+                    <td>#{{ o.id }}</td>
+                    <td>{{ o.name }}</td>
+                    <td>{{ o.email }}</td>
+                    <td>{{ o.number }}</td>
+                    <td><span class="role-badge">Owner</span></td>
+                    <td>
+                        {% if o.is_verified == 1 %}
+                        <span class="badge-verified">Verified</span>
+                        {% else %}
+                        <span class="badge-not-verified">Not Verified</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+        <i class="far fa-folder-open fa-4x mb-3" style="opacity:0.4;"></i>
+        <h4>No Owners Found</h4>
+        <p style="opacity:0.6;">No owner accounts available.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

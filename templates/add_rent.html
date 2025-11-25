@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Add Rent{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:700px;">
+    <h3 class="mb-3">Add Monthly Rent for: <strong>{{ property.title }}</strong></h3>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="mb-3">
+        {% for msg in messages %}
+        <div class="alert alert-info">{{ msg }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Tenant</label>
+            <select name="tenant_id" class="form-select" required>
+                <option value="">Select tenant</option>
+                {% for t in tenants %}
+                <option value="{{ t.id }}">{{ t.name }} — {{ t.email }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Month</label>
+                <input name="month" class="form-control" placeholder="e.g., March" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Year</label>
+                <input name="year" class="form-control" type="number" value="{{ now().year if now is defined else '' }}"
+                    required>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Amount</label>
+            <input name="amount" class="form-control" type="number" step="0.01" required>
+        </div>
+
+        <button class="btn btn-primary">Add Rent</button>
+        <a href="{{ url_for('owner_dashboard') }}" class="btn btn-outline-secondary ms-2">Back</a>
+    </form>
+</div>
+{% endblock %}

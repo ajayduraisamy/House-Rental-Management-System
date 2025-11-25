@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}All Users{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    .page-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    }
+
+    .page-title {
+        font-weight: 800;
+        background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .role-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.78rem;
+    }
+
+    .role-admin {
+        background: rgba(234, 179, 8, 0.15);
+        color: #b45309;
+    }
+
+    .role-owner {
+        background: rgba(59, 130, 246, 0.15);
+        color: #1d4ed8;
+    }
+
+    .role-user {
+        background: rgba(16, 185, 129, 0.15);
+        color: #047857;
+    }
+
+    table th {
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    table td {
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="container py-4">
+
+    <div class="page-header">
+        <h2 class="page-title">
+            <i class="fas fa-users me-2"></i>All Users
+        </h2>
+        <p style="opacity: 0.6;">Manage owners, tenants, and admin accounts</p>
+    </div>
+
+    {% if users %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Number</th>
+                    <th>Role</th>
+                    <th>Verified</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>#{{ u.id }}</td>
+                    <td>{{ u.name }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.number }}</td>
+                    <td>
+
+                        {% if u.role == "admin" %}
+                        <span class="role-badge role-admin">Admin</span>
+
+                        {% elif u.role == "owner" %}
+                        <span class="role-badge role-owner">Owner</span>
+
+                        {% else %}
+                        <span class="role-badge role-user">Tenant</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if u.is_verified == 1 %}
+                        <span class="badge bg-success">Verified</span>
+                        {% else %}
+                        <span class="badge bg-danger">Not Verified</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+        <i class="far fa-folder-open fa-4x mb-3" style="opacity:0.4;"></i>
+        <h4>No Users Found</h4>
+        <p style="opacity:0.6;">No registered users available.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
